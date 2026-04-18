@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-brand: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-charcoal-base: #0a0a0a;
+  --color-charcoal-light: #111111;
+  --color-metallic-grey: #7f8c8d;
+  --color-metallic-dim: #333333;
+  --color-neon-white: #ffffff;
+  
+  --alpha-glass: 0.03;
+  --alpha-glow: 0.15;
+}
+
+:root {
+  background-color: var(--color-charcoal-base);
+  color: var(--color-neon-white);
+}
+
+@layer base {
+  body {
+    @apply antialiased overflow-x-hidden m-0 p-0 selection:bg-white selection:text-black;
+    font-family: var(--font-sans);
+  }
+}
+
+.neon-glow {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8))
+          drop-shadow(0 0 15px rgba(255, 255, 255, 0.4));
+}
+
+.nav-glow {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
+}
+
+.glass {
+  @apply backdrop-blur-[20px] bg-white/[0.03] border border-white/[0.03];
+}
+
+.magnetic-item {
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
