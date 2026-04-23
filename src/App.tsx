@@ -4,9 +4,20 @@
  */
 
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'motion/react';
-// Build cache bust: 2
+// Build cache bust: 4
 import React, { useState, useEffect, useRef, ReactNode, MouseEvent } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Eye, Zap, Share2, Activity, ArrowRight, ArrowUpRight, ArrowDown, ArrowUp, Menu, X, User, Layout, BarChart3, Clock, Terminal, Globe2, GitBranch } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// New Auth & Account Components
+import LoginPage from './components/auth/LoginPage';
+import SignupPage from './components/auth/SignupPage';
+import ResetPassword from './components/auth/ResetPassword';
+import UpdatePassword from './components/auth/UpdatePassword';
+import AccountPage from './components/account/AccountPage';
+import { UserMenu } from '@/components/layout/UserMenu';
+import { Button } from '@/components/ui/button';
 
 // --- Constants & Types ---
 const TOOLS = [
@@ -16,7 +27,7 @@ const TOOLS = [
   { id: 'team', name: 'TEAM AGGREGATION', label: 'AGENTIC TEAM AGGREGATION', icon: Globe2, desc: 'Global cluster distribution.' },
 ];
 
-const E_PATH = "M 70 25 H 30 L 60 45 L 30 65 H 70"; // Mirror-flipped Epsilon-themed E
+export const E_PATH = "M 70 25 H 30 L 60 45 L 30 65 H 70"; // Mirror-flipped Epsilon-themed E
 
 // --- Components ---
 
@@ -99,7 +110,7 @@ const Preloader = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
-const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
+export const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -138,8 +149,8 @@ const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
       >
         {/* Neon Base Glow */}
         <motion.div 
-          animate={{ opacity: 0.25, scale: 1.3 }}
-          className="absolute inset-0 blur-[160px] bg-white rounded-full transition-all duration-1000" 
+          animate={{ opacity: 0.05, scale: 1.3 }}
+          className="absolute inset-0 blur-[100px] bg-white rounded-full transition-all duration-1000" 
         />
         
         <motion.div
@@ -154,7 +165,7 @@ const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <defs>
               <filter id="neon-bloom">
-                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feGaussianBlur stdDeviation="0.1" result="blur" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
             </defs>
@@ -171,7 +182,7 @@ const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
                 initial={{ strokeDashoffset: 0 }}
                 animate={{ 
                   strokeDashoffset: [0, -100],
-                  opacity: [0, 0.9 - i * 0.05, 0],
+                  opacity: [0, 0.2 - i * 0.02, 0],
                   scale: [1, 1 + i * 0.03, 1],
                 }}
                 transition={{
@@ -192,7 +203,7 @@ const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
               opacity={0.9}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]"
+              className="drop-shadow-[0_0_2.2px_rgba(255,255,255,0.22)]"
             />
           </svg>
         </motion.div>
@@ -201,7 +212,7 @@ const BackgroundE = ({ isSubpage }: { isSubpage: boolean }) => {
   );
 };
 
-const Starfield = () => {
+export const Starfield = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -330,17 +341,20 @@ const Magnetic = ({ children }: { children: ReactNode, key?: React.Key }) => {
 
 const Header = ({ activeTool, activeModel, onNavigate }: { activeTool: string | null; activeModel: string; onNavigate: (id: string | null) => void }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleNav = (id: string | null) => {
     onNavigate(id);
+    navigate('/');
     setMenuOpen(false);
   };
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full z-[9999] px-6 md:px-16 h-[100px] md:h-[120px] flex items-center justify-between pointer-events-none gap-6 md:gap-16">
+      <header className="fixed top-0 left-0 w-full z-[9999] px-6 md:px-[4%] h-[100px] md:h-[120px] flex items-center justify-between pointer-events-none">
         <div 
-          className="flex items-center gap-6 md:gap-8 pointer-events-auto cursor-pointer group" 
+          className="flex items-center gap-[7.6px] md:gap-[11.4px] pointer-events-auto cursor-pointer group" 
           onClick={() => handleNav(null)}
         >
           <div className="flex items-center justify-center transition-all group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter shrink-0">
@@ -353,43 +367,86 @@ const Header = ({ activeTool, activeModel, onNavigate }: { activeTool: string | 
           </span>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-8 pointer-events-auto px-12 py-3 rounded-full backdrop-blur-xl bg-transparent">
-          {TOOLS.map((tool) => (
-            <Magnetic key={tool.id}>
-              <div
-                onClick={() => handleNav(tool.id)}
-                className="relative cursor-pointer group flex flex-col items-center px-4"
-              >
-                <motion.span 
-                  animate={{ 
-                    color: activeTool === tool.id ? '#ffffff' : '#7f8c8d',
-                  }}
-                  className={`font-sans font-bold text-[10px] tracking-[0.15em] transition-all group-hover:text-white uppercase ${activeTool === tool.id ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : ''}`}
+        <nav className="hidden lg:flex items-center gap-6 pointer-events-auto px-10 py-2.5 rounded-full backdrop-blur-2xl bg-white/[0.03] border border-white/5">
+          <div className="flex items-center gap-6">
+            {TOOLS.map((tool) => (
+              <Magnetic key={tool.id}>
+                <div
+                  onClick={() => handleNav(tool.id)}
+                  className="relative cursor-pointer group flex flex-col items-center px-4"
                 >
-                  {tool.name}
-                </motion.span>
-                <AnimatePresence>
-                  {activeTool === tool.id && (
-                    <motion.div 
-                      layoutId="nav-bloom-line"
-                      className="absolute -bottom-4 w-full h-[1px] bg-white shadow-[0_0_15px_#fff]"
-                      initial={{ opacity: 0, scaleX: 0 }}
-                      animate={{ opacity: 1, scaleX: 1 }}
-                      exit={{ opacity: 0, scaleX: 0 }}
-                    />
-                  )}
-                </AnimatePresence>
+                  <motion.span 
+                    animate={{ 
+                      color: activeTool === tool.id ? '#ffffff' : '#7f8c8d',
+                    }}
+                    className={`font-sans font-bold text-[10px] tracking-[0.15em] transition-all group-hover:text-white uppercase ${activeTool === tool.id ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : ''}`}
+                  >
+                    {tool.name}
+                  </motion.span>
+                  <AnimatePresence>
+                    {activeTool === tool.id && (
+                      <motion.div 
+                        layoutId="nav-bloom-line"
+                        className="absolute -bottom-4 w-full h-[1px] bg-white shadow-[0_0_15px_#fff]"
+                        initial={{ opacity: 0, scaleX: 0 }}
+                        animate={{ opacity: 1, scaleX: 1 }}
+                        exit={{ opacity: 0, scaleX: 0 }}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              </Magnetic>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4 ml-6 pl-6 border-l border-white/10">
+            {!user ? (
+              <div className="flex items-center gap-3">
+                <motion.button 
+                  whileHover={{ 
+                    scale: 1.02, 
+                    boxShadow: '0 0 20px rgba(255, 255, 255, 0.2)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                  onClick={() => navigate('/auth/login')}
+                  className="px-5 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-white font-brand font-bold text-[9px] tracking-[0.2em] uppercase transition-all whitespace-nowrap"
+                >
+                  Log In
+                </motion.button>
+                <motion.button 
+                  whileHover={{ 
+                    scale: 1.05, 
+                    backgroundColor: '#e5e7eb',
+                  }}
+                  onClick={() => navigate('/auth/signup')}
+                  className="px-5 py-1.5 rounded-full bg-white text-black font-brand font-bold text-[9px] tracking-[0.2em] uppercase shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all whitespace-nowrap"
+                >
+                  Sign Up
+                </motion.button>
               </div>
-            </Magnetic>
-          ))}
+            ) : (
+              <div className="scale-90">
+                <UserMenu />
+              </div>
+            )}
+          </div>
         </nav>
 
-        <button 
-          className="lg:hidden pointer-events-auto flex items-center justify-center p-3 text-white glowing-btn"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />}
-        </button>
+
+        <div className="lg:hidden flex items-center gap-4 pointer-events-auto relative z-[10001]">
+          <button 
+            className={`flex items-center justify-center p-3 text-white glowing-btn transition-all duration-300 ${menuOpen ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}`}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <Menu className="w-6 h-6 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+          </button>
+          {/* Mobile Authenticated User Icon on the RIGHT */}
+          {user && (
+            <div>
+              <UserMenu />
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Mobile Menu Overlay */}
@@ -399,8 +456,19 @@ const Header = ({ activeTool, activeModel, onNavigate }: { activeTool: string | 
             initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
             animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
             exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            className="fixed inset-0 z-[9990] bg-[#0a0a0a]/90 flex flex-col items-center justify-center p-6 gap-8 pointer-events-auto"
+            className="fixed inset-0 z-[10000] bg-[#0a0a0a]/90 flex flex-col items-center p-6 pt-[120px] pb-10 gap-8 pointer-events-auto overflow-y-auto"
           >
+            {/* Dedicated Close Button inside Overlay */}
+            <motion.button 
+              initial={{ opacity: 0, rotate: -90 }}
+              animate={{ opacity: 1, rotate: 0 }}
+              transition={{ delay: 0.2 }}
+              onClick={() => setMenuOpen(false)}
+              className="absolute top-10 right-10 p-3 text-white bg-white/5 border border-white/10 rounded-full backdrop-blur-xl group hover:border-white/40 active:scale-90 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+            >
+              <X className="w-7 h-7 group-hover:scale-110 group-active:scale-95 transition-transform" />
+            </motion.button>
+
             {TOOLS.map((tool, idx) => (
               <motion.div
                 key={tool.id}
@@ -408,7 +476,7 @@ const Header = ({ activeTool, activeModel, onNavigate }: { activeTool: string | 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 onClick={() => handleNav(tool.id)}
-                className="text-center"
+                className="text-center w-full max-w-xs shrink-0"
               >
                 <div className="text-white font-brand font-bold tracking-widest uppercase text-xl mb-2 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">
                   {tool.name}
@@ -418,6 +486,37 @@ const Header = ({ activeTool, activeModel, onNavigate }: { activeTool: string | 
                 </div>
               </motion.div>
             ))}
+
+            {/* Mobile Unauth Buttons INSIDE */}
+            {!user && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex flex-col gap-4 w-full max-w-[280px] mt-8 pt-8 border-t border-white/10 shrink-0"
+              >
+                <motion.button 
+                  whileHover={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
+                  }}
+                  onClick={() => { setMenuOpen(false); navigate('/auth/login'); }}
+                  className="w-full h-14 border border-white/10 bg-white/5 text-white font-brand font-bold uppercase tracking-widest text-[10px] rounded-full backdrop-blur-md transition-all"
+                >
+                  Log In
+                </motion.button>
+                <motion.button 
+                  whileHover={{ 
+                    backgroundColor: '#e5e7eb',
+                    scale: 0.98
+                  }}
+                  onClick={() => { setMenuOpen(false); navigate('/auth/signup'); }}
+                  className="w-full h-14 bg-white text-black font-brand font-bold uppercase tracking-widest text-[10px] rounded-full shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all"
+                >
+                  Sign Up
+                </motion.button>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -431,8 +530,11 @@ const ToolDashboard = ({ activeTool, onBack }: { activeTool: string, onBack: () 
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
-      className="container mx-auto px-8 pt-32 min-h-screen pb-20"
+      className="container mx-auto px-8 pt-32 min-h-screen pb-20 relative"
     >
+      {/* Tool-specific background glow */}
+      <div className="fixed top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#FF3131]/5 blur-[120px] -z-10 pointer-events-none" />
+      
       <div className="flex flex-col gap-10">
         {/* Header Section */}
         <div className="flex justify-between items-end border-b border-white/5 pb-10">
@@ -441,7 +543,17 @@ const ToolDashboard = ({ activeTool, onBack }: { activeTool: string, onBack: () 
             <p className="text-[#7f8c8d] font-sans tracking-widest text-xs uppercase opacity-60">System Core / Active Node Synthesis</p>
           </div>
           <div className="flex gap-4">
-            <button className="glass py-2 px-6 rounded-lg text-xs tracking-widest uppercase hover:bg-white hover:text-black transition-all">Export Data</button>
+            <motion.button 
+              whileHover={{ 
+                backgroundColor: '#ffffff', 
+                color: '#000000',
+                boxShadow: '0 0 25px rgba(255, 255, 255, 1)',
+                scale: 1.05
+              }}
+              className="glass py-2 px-6 rounded-lg text-xs tracking-widest uppercase transition-all font-sans font-bold"
+            >
+              Export Data
+            </motion.button>
             <button className="p-3 bg-white text-black rounded-lg"><Activity className="w-5 h-5" /></button>
           </div>
         </div>
@@ -514,10 +626,10 @@ const LoggingView = () => {
               <label className="text-[9px] uppercase tracking-[0.2em] text-[#7f8c8d]">Status</label>
               <div 
                 onClick={() => setComplete(!complete)}
-                className={`w-full border p-4 rounded-lg flex items-center justify-between cursor-pointer transition-all h-[54px] ${complete ? 'bg-[#00E5FF]/20 border-[#00E5FF] shadow-[0_0_15px_rgba(0,229,255,0.2)]' : 'bg-[#0a0a0a]/50 border-[#7f8c8d]/30 hover:border-white'}`}
+                className={`w-full border p-4 rounded-lg flex items-center justify-between cursor-pointer transition-all h-[54px] ${complete ? 'bg-[#FF3131]/20 border-[#FF3131] shadow-[0_0_15px_rgba(255,49,49,0.2)]' : 'bg-[#0a0a0a]/50 border-[#7f8c8d]/30 hover:border-white'}`}
               >
-                <span className={`text-[10px] font-mono tracking-widest ${complete ? 'text-[#00E5FF]' : 'text-[#7f8c8d]'}`}>{complete ? 'COMPLETED' : 'PENDING'}</span>
-                <div className={`w-3 h-3 rounded-full border border-current ${complete ? 'bg-[#00E5FF]' : 'bg-transparent'}`} />
+                <span className={`text-[10px] font-mono tracking-widest ${complete ? 'text-[#FF3131]' : 'text-[#7f8c8d]'}`}>{complete ? 'COMPLETED' : 'PENDING'}</span>
+                <div className={`w-3 h-3 rounded-full border border-current ${complete ? 'bg-[#FF3131]' : 'bg-transparent'}`} />
               </div>
             </div>
           </div>
@@ -560,16 +672,16 @@ const LoggingView = () => {
              <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 40">
                 <defs>
                    <linearGradient id="line-glow" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="0%" stopColor="#00E5FF" stopOpacity="0.3" />
-                       <stop offset="100%" stopColor="#00E5FF" stopOpacity="0" />
+                       <stop offset="0%" stopColor="#FF3131" stopOpacity="0.3" />
+                       <stop offset="100%" stopColor="#FF3131" stopOpacity="0" />
                    </linearGradient>
                 </defs>
                 <motion.path 
                   d="M 0 35 L 10 30 L 20 32 L 30 15 L 40 20 L 50 10 L 60 12 L 70 5 L 80 8 L 90 2 L 100 6" 
                   fill="none" 
-                  stroke="#00E5FF" 
+                  stroke="#FF3131" 
                   strokeWidth="1" 
-                  className="drop-shadow-[0_0_10px_rgba(0,229,255,1)]"
+                  className="drop-shadow-[0_0_10px_rgba(255,49,49,1)]"
                   initial={{ pathLength: 0 }}
                   animate={{ pathLength: 1 }}
                   transition={{ duration: 2, ease: "easeInOut" }}
@@ -626,12 +738,12 @@ const RoiView = () => {
                   <path d={pathObj} stroke="#7f8c8d" strokeWidth="0.1" fill="none" opacity="0.3" />
                   <motion.path 
                     d={pathObj} 
-                    stroke="#00E5FF" 
+                    stroke="#FF3131" 
                     strokeWidth="0.3" 
                     fill="none" 
                     strokeDasharray="5 15"
                     strokeLinecap="round"
-                    className="drop-shadow-[0_0_8px_rgba(0,229,255,1)]"
+                    className="drop-shadow-[0_0_8px_rgba(255,49,49,1)]"
                     animate={{ strokeDashoffset: [0, -40] }}
                     transition={{ duration: 3 + Math.random(), repeat: Infinity, ease: "linear" }}
                   />
@@ -665,14 +777,14 @@ const RoiView = () => {
                animate={{ y: [0, -8, 0] }}
                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
              >
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_10px_rgba(0,229,255,1)]">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_10px_rgba(255,49,49,1)]">
                    <path d="M12 19V5M5 12l7-7 7 7"/>
                 </svg>
              </motion.div>
-             <p className="text-6xl text-[#00E5FF] font-brand font-bold drop-shadow-[0_0_15px_rgba(0,229,255,0.4)] tracking-tighter">+14.2%</p>
+             <p className="text-6xl text-[#FF3131] font-brand font-bold drop-shadow-[0_0_15px_rgba(255,49,49,0.4)] tracking-tighter">+14.2%</p>
           </div>
           <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-y-1/4 translate-x-1/4">
-             <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="1">
+             <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="1">
                 <path d="M12 19V5M5 12l7-7 7 7"/>
              </svg>
           </div>
@@ -765,13 +877,13 @@ const ExperimentView = () => {
       </div>
 
       {/* Column 2: Results Data Grid */}
-      <div className="lg:col-span-2 bg-[#0a0a0a]/40 backdrop-blur-xl p-10 rounded-3xl border border-[#7f8c8d]/20 min-h-[500px] relative overflow-hidden flex flex-col hover:shadow-[0_0_30px_rgba(0,229,255,0.05)] transition-all duration-500">
+      <div className="lg:col-span-2 bg-[#0a0a0a]/40 backdrop-blur-xl p-10 rounded-3xl border border-[#7f8c8d]/20 min-h-[500px] relative overflow-hidden flex flex-col hover:shadow-[0_0_30px_rgba(255,49,49,0.05)] transition-all duration-500">
         
         <div className="flex justify-between items-start mb-12">
            <div>
              <h3 className="text-white text-[11px] font-mono uppercase tracking-[0.2em] mb-2">Live Experiment Results</h3>
              <div className="flex items-center gap-3">
-               <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${status === 'Running' ? 'bg-[#00E5FF] text-[#00E5FF] animate-pulse' : status === 'Paused' ? 'bg-[#7f8c8d] text-[#7f8c8d]' : 'bg-white text-white'}`} />
+               <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${status === 'Running' ? 'bg-[#FF3131] text-[#FF3131] animate-pulse' : status === 'Paused' ? 'bg-[#7f8c8d] text-[#7f8c8d]' : 'bg-white text-white'}`} />
                <p className="text-[10px] text-[#7f8c8d] font-mono uppercase tracking-widest">Status: <span className="text-white">{status}</span></p>
              </div>
            </div>
@@ -780,7 +892,7 @@ const ExperimentView = () => {
              onClick={() => setStatus(status === 'Running' ? 'Paused' : 'Running')}
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
-             className={`border px-8 py-3 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase transition-all z-20 ${status === 'Running' ? 'border-[#00E5FF] text-[#00E5FF] shadow-[0_0_20px_rgba(0,229,255,0.2)] hover:bg-[#00E5FF] hover:text-black' : 'border-white text-white hover:bg-white hover:text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]'}`}
+             className={`border px-8 py-3 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase transition-all z-20 ${status === 'Running' ? 'border-[#FF3131] text-[#FF3131] shadow-[0_0_20px_rgba(255,49,49,0.2)] hover:bg-[#FF3131] hover:text-black' : 'border-white text-white hover:bg-white hover:text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]'}`}
            >
              {status === 'Running' ? 'Halt Experiment' : 'Resume Protocol'}
            </motion.button>
@@ -798,12 +910,12 @@ const ExperimentView = () => {
            {conditions.map((cond, idx) => (
              <div key={cond.id} className="grid grid-cols-4 gap-4 items-center bg-black/40 border border-[#7f8c8d]/10 p-6 rounded-2xl hover:border-white/50 transition-all group">
                 <div className="flex items-center gap-4">
-                  <div className={`w-1 h-8 rounded-full ${idx === 0 ? 'bg-white shadow-[0_0_10px_white]' : 'bg-[#00E5FF] shadow-[0_0_10px_#00E5FF]'}`} />
+                  <div className={`w-1 h-8 rounded-full ${idx === 0 ? 'bg-white shadow-[0_0_10px_white]' : 'bg-[#FF3131] shadow-[0_0_10px_#FF3131]'}`} />
                   <span className="font-mono text-sm text-white">{cond.name}</span>
                 </div>
                 <div className="text-right font-brand text-2xl text-white">{cond.count}</div>
                 <div className="text-right font-brand text-2xl text-white">{cond.time}</div>
-                <div className="text-right font-brand text-2xl text-[#00E5FF] drop-shadow-[0_0_10px_rgba(0,229,255,0.5)]">{cond.rate}</div>
+                <div className="text-right font-brand text-2xl text-[#FF3131] drop-shadow-[0_0_10px_rgba(255,49,49,0.5)]">{cond.rate}</div>
              </div>
            ))}
 
@@ -811,7 +923,7 @@ const ExperimentView = () => {
            <div className="mt-auto px-6 pt-10">
               <svg className="w-full h-[60px]" preserveAspectRatio="none" viewBox="0 0 100 20">
                  <path d="M 0 10 Q 25 0 50 10 T 100 10" fill="none" stroke="#7f8c8d" strokeWidth="0.2" strokeDasharray="1 3" />
-                 <path d="M 0 15 Q 25 25 50 15 T 100 15" fill="none" stroke="#00E5FF" strokeWidth="0.2" opacity="0.5" />
+                 <path d="M 0 15 Q 25 25 50 15 T 100 15" fill="none" stroke="#FF3131" strokeWidth="0.2" opacity="0.5" />
                  <motion.circle 
                    cx="50" cy="10" r="1" fill="#white" 
                    className="drop-shadow-[0_0_5px_white]"
@@ -849,15 +961,15 @@ const TeamView = () => {
               <p className="text-4xl text-white font-brand font-bold drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">2,035</p>
             </div>
             <div className="hidden sm:block w-[1px] h-12 bg-[#7f8c8d]/20" />
-            <div className="flex-1 md:flex-none flex justify-between md:justify-end items-center bg-[#0a0a0a]/80 py-4 px-6 border border-[#00E5FF]/40 rounded-2xl shadow-[0_0_20px_rgba(0,229,255,0.15)] glow-card">
+            <div className="flex-1 md:flex-none flex justify-between md:justify-end items-center bg-[#0a0a0a]/80 py-4 px-6 border border-[#FF3131]/40 rounded-2xl shadow-[0_0_20px_rgba(255,49,49,0.15)] glow-card">
               <div className="text-left md:text-right mr-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#00E5FF] mb-1 drop-shadow-[0_0_5px_rgba(0,229,255,0.8)] font-bold">Unassigned Tasks</p>
-                <p className="text-4xl text-[#00E5FF] font-brand font-bold drop-shadow-[0_0_15px_rgba(0,229,255,0.8)]">14</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#FF3131] mb-1 drop-shadow-[0_0_5px_rgba(255,49,49,0.8)] font-bold">Unassigned Tasks</p>
+                <p className="text-4xl text-[#FF3131] font-brand font-bold drop-shadow-[0_0_15px_rgba(255,49,49,0.8)]">14</p>
               </div>
               <motion.div 
                 animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="w-4 h-4 rounded-full bg-[#00E5FF] shadow-[0_0_15px_#00E5FF] border-2 border-white/50" 
+                className="w-4 h-4 rounded-full bg-[#FF3131] shadow-[0_0_15px_#FF3131] border-2 border-white/50" 
               />
             </div>
          </div>
@@ -885,7 +997,7 @@ const TeamView = () => {
                 </div>
                 <div>
                    <p className="text-[8px] uppercase tracking-[0.15em] text-[#7f8c8d] mb-1">Delta</p>
-                   <p className="text-xl text-[#00E5FF] font-brand font-bold drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">{m.compRate}</p>
+                   <p className="text-xl text-[#FF3131] font-brand font-bold drop-shadow-[0_0_5px_rgba(255,49,49,0.5)]">{m.compRate}</p>
                 </div>
                 <div>
                    <p className="text-[8px] uppercase tracking-[0.15em] text-[#7f8c8d] mb-1">Hours</p>
@@ -925,7 +1037,7 @@ const IllustrationLogging = () => (
         <rect x="0" y="0" width="10" height="10" rx="2" fill="none" stroke="#7f8c8d" strokeWidth="1" opacity="0.5" />
         <motion.path 
           d="M2,5 L4,8 L8,2" 
-          fill="none" stroke="#00E5FF" strokeWidth="1.5"
+          fill="none" stroke="#FF3131" strokeWidth="1.5"
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: 1 }}
           transition={{ duration: 0.5, delay: i * 0.4, repeat: Infinity, repeatDelay: 1.5 }}
@@ -933,11 +1045,11 @@ const IllustrationLogging = () => (
         <line x1="20" y1="5" x2="35" y2="5" stroke="#7f8c8d" strokeWidth="1" strokeDasharray="1 2" opacity="0.3" />
         <motion.line 
           x1="40" y1="5" x2="130" y2="5" 
-          stroke="#00E5FF" strokeWidth="2" strokeLinecap="round"
+          stroke="#FF3131" strokeWidth="2" strokeLinecap="round"
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: 1 }}
           transition={{ duration: 0.8, delay: i * 0.4 + 0.2, repeat: Infinity, repeatDelay: 1.5 }}
-          className="drop-shadow-[0_0_4px_#00E5FF]"
+          className="drop-shadow-[0_0_4px_#FF3131]"
         />
       </g>
     ))}
@@ -955,14 +1067,14 @@ const IllustrationROI = () => (
       initial={{ strokeDashoffset: 220 }}
       animate={{ strokeDashoffset: [220, 0, 220] }}
       transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
-      className="drop-shadow-[0_0_12px_#00E5FF]"
+      className="drop-shadow-[0_0_12px_#FF3131]"
     />
     <motion.text 
       x="100" y="54" 
-      textAnchor="middle" fill="#00E5FF" fontSize="12" fontFamily="monospace" fontWeight="bold"
+      textAnchor="middle" fill="#FF3131" fontSize="12" fontFamily="monospace" fontWeight="bold"
       animate={{ opacity: [0.3, 1, 0.3] }} 
       transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
-      className="drop-shadow-[0_0_8px_#00E5FF]"
+      className="drop-shadow-[0_0_8px_#FF3131]"
     >
       99%
     </motion.text>
@@ -981,20 +1093,20 @@ const IllustrationExperiment = () => (
       <motion.line key={`b-${i}`} x1="120" y1={30 + i * 15} x2="160" y2={30 + i * 15} stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"
         animate={{ opacity: [0.1, 1, 0.1] }}
         transition={{ duration: 3, delay: 1.5, repeat: Infinity }}
-        className="drop-shadow-[0_0_6px_#00E5FF]"
+        className="drop-shadow-[0_0_6px_#FF3131]"
       />
     ))}
     
-    <motion.rect x="110" y="15" width="60" height="70" rx="4" fill="#00E5FF" opacity="0"
+    <motion.rect x="110" y="15" width="60" height="70" rx="4" fill="#FF3131" opacity="0"
       animate={{ opacity: [0, 0, 0.15, 0] }}
       transition={{ duration: 3, repeat: Infinity, times: [0, 0.5, 0.8, 1] }}
     />
     
     <motion.line 
-      x1="20" x2="180" stroke="#00E5FF" strokeWidth="1.5"
+      x1="20" x2="180" stroke="#FF3131" strokeWidth="1.5"
       animate={{ y1: [10, 90, 10], y2: [10, 90, 10] }}
       transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-      className="drop-shadow-[0_0_8px_#00E5FF]"
+      className="drop-shadow-[0_0_8px_#FF3131]"
     />
   </svg>
 );
@@ -1009,7 +1121,7 @@ const IllustrationTeam = () => {
         <g key={i}>
           <line x1={node.x} y1={node.y} x2="100" y2="50" stroke="#7f8c8d" strokeWidth="1" opacity="0.3" />
           <circle cx={node.x} cy={node.y} r="4" fill="none" stroke="#FFFFFF" strokeWidth="1" opacity="0.5" />
-          <circle cx={node.x} cy={node.y} r="2" fill="#00E5FF" className="drop-shadow-[0_0_4px_#00E5FF]" />
+          <circle cx={node.x} cy={node.y} r="2" fill="#FF3131" className="drop-shadow-[0_0_4px_#FF3131]" />
           <motion.circle r="2.5" fill="#FFFFFF"
             animate={{ cx: [node.x, 100], cy: [node.y, 50], opacity: [0, 1, 0] }}
             transition={{ duration: 1.2, delay: i * 0.4, repeat: Infinity, ease: "easeIn" }}
@@ -1018,10 +1130,10 @@ const IllustrationTeam = () => {
         </g>
       ))}
       
-      <motion.circle cx="100" cy="50" r="8" fill="#00E5FF" 
+      <motion.circle cx="100" cy="50" r="8" fill="#FF3131" 
         animate={{ scale: [1, 1.2, 1] }} 
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        className="drop-shadow-[0_0_12px_#00E5FF]"
+        className="drop-shadow-[0_0_12px_#FF3131]"
       />
       <circle cx="100" cy="50" r="3" fill="#FFFFFF" />
     </svg>
@@ -1048,7 +1160,7 @@ const ToolGrid = ({ onSelect }: { onSelect: (id: string) => void }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 + idx * 0.1, duration: 0.8 }}
           onClick={() => onSelect(tool.id)}
-          className="group relative flex flex-col p-6 rounded-[2rem] bg-[#0a0a0a]/60 backdrop-blur-2xl border border-[#7f8c8d]/20 transition-all duration-500 cursor-pointer shadow-[0_20px_40px_rgba(0,0,0,0.8),_0_0_20px_rgba(0,229,255,0.05)] hover:-translate-y-2 hover:scale-[1.02] hover:shadow-[0_40px_60px_rgba(0,0,0,0.9),_0_0_40px_rgba(255,255,255,0.15)] hover:border-white/40"
+          className="group relative flex flex-col p-6 rounded-[2rem] bg-[#0a0a0a]/60 backdrop-blur-2xl border border-[#7f8c8d]/20 transition-all duration-500 cursor-pointer shadow-[0_20px_40px_rgba(0,0,0,0.8),_0_0_20px_rgba(255,49,49,0.05)] hover:-translate-y-2 hover:scale-[1.02] hover:shadow-[0_40px_60px_rgba(0,0,0,0.9),_0_0_40px_rgba(255,255,255,0.15)] hover:border-white/40"
         >
           <div className="flex justify-between items-start mb-6">
             <tool.icon className="w-6 h-6 text-[#7f8c8d] group-hover:text-white transition-colors" />
@@ -1063,7 +1175,7 @@ const ToolGrid = ({ onSelect }: { onSelect: (id: string) => void }) => {
           
           <div className="relative w-full">
             {/* Ambient Base Glow */}
-            <div className="absolute inset-0 bg-gradient-radial from-[#00E5FF]/20 to-transparent blur-2xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-radial from-[#FF3131]/20 to-transparent blur-2xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             
             <div className="relative w-full h-40 bg-black/40 rounded-2xl border border-[#7f8c8d]/20 overflow-hidden flex items-center justify-center">
               {getIllustration(tool.id)}
@@ -1079,13 +1191,42 @@ const ToolGrid = ({ onSelect }: { onSelect: (id: string) => void }) => {
   );
 };
 
-export default function App() {
-  const [loading, setLoading] = useState(true);
-  const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [activeModel] = useState('Ergon-Prime v1');
+/**
+ * ProtectedRoute Component
+ * Redirects to login if not authenticated
+ */
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
+  if (loading) return null; // Or a smaller loader
+
+  if (!user) {
+    return <Navigate to={`/auth/login?returnUrl=${encodeURIComponent(location.pathname)}`} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+/**
+ * DashboardView
+ * Encapsulates the existing state-based tool logic
+ */
+const DashboardView = ({ 
+  loading, 
+  activeTool, 
+  setActiveTool, 
+  activeModel,
+  setLoading
+}: { 
+  loading: boolean, 
+  activeTool: string | null, 
+  setActiveTool: (id: string | null) => void,
+  activeModel: string,
+  setLoading: (l: boolean) => void
+}) => {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#7f8c8d] font-sans selection:bg-white selection:text-black overflow-x-hidden">
+    <>
       <AnimatePresence mode="wait">
         {loading && <Preloader onComplete={() => setLoading(false)} />}
       </AnimatePresence>
@@ -1157,8 +1298,71 @@ export default function App() {
         </div>
       </div>
 
-      {/* Mobile Floating Scroll CTA */}
       <MobileScrollCTA />
+    </>
+  );
+};
+
+export default function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
+  );
+}
+
+function AppContent() {
+  const [loading, setLoading] = useState(true);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [activeModel] = useState('Ergon-Prime v1');
+  const location = useLocation();
+
+  useEffect(() => {
+    // Scroll to top on route change
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-[#7f8c8d] font-sans selection:bg-white selection:text-black overflow-x-hidden">
+      <Routes>
+        {/* Full Tool Dashboard (Public for now, following existing behavior) */}
+        <Route path="/" element={
+          <DashboardView 
+            loading={loading} 
+            activeTool={activeTool} 
+            setActiveTool={setActiveTool} 
+            activeModel={activeModel} 
+            setLoading={setLoading}
+          />
+        } />
+        <Route path="/dashboard" element={
+          <DashboardView 
+            loading={false} 
+            activeTool={activeTool} 
+            setActiveTool={setActiveTool} 
+            activeModel={activeModel} 
+            setLoading={setLoading}
+          />
+        } />
+
+        {/* Auth Routes */}
+        <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/signup" element={<SignupPage />} />
+        <Route path="/auth/reset" element={<ResetPassword />} />
+        <Route path="/auth/update-password" element={<UpdatePassword />} />
+
+        {/* Protected Routes */}
+        <Route path="/account" element={
+          <ProtectedRoute>
+            <AccountPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }

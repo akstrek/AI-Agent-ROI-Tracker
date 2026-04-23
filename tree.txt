@@ -1,0 +1,23 @@
+
+Proposed File Structure for Authentication System Implementation:
+
+src/
+├── components/
+│   ├── account/
+│   │   └── AccountPage.tsx
+│   ├── auth/
+│   │   ├── LoginPage.tsx
+│   │   ├── SignupPage.tsx
+│   │   ├── ResetPassword.tsx
+│   │   └── UpdatePassword.tsx
+│   └── layout/
+│       ├── Navbar.tsx
+│       └── UserMenu.tsx
+├── context/
+│   └── AuthContext.tsx
+├── lib/
+│   ├── supabase.ts
+│   └── utils.ts (created by shadcn)
+├── App.tsx (Updated with routes)
+├── LandingLayout.tsx (Updated to use new Navbar)
+└── index.css (Updated with auth styles)
