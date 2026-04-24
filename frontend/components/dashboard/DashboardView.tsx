@@ -8,6 +8,7 @@ import { Starfield } from '@/components/canvas/Starfield';
 import { Header } from '@/components/layout/Header';
 import { ToolGrid } from '@/components/dashboard/ToolGrid';
 import { ToolDashboard } from '@/components/dashboard/ToolDashboard';
+import { HowToUse } from '@/components/dashboard/HowToUse';
 import { MobileScrollCTA } from '@/components/layout/MobileScrollCTA';
 
 export default function DashboardView({
@@ -81,16 +82,25 @@ export default function DashboardView({
                     <span className="opacity-40">Real-time ROI benchmarking across every node in your intelligent network.</span>
                   </p>
 
-                  <button
-                    onClick={() => window.scrollTo({ top: window.innerHeight * 0.8, behavior: 'smooth' })}
-                    className="hidden md:inline-flex mt-6 px-6 py-3 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl text-white font-mono text-[10px] tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all duration-300"
-                  >
-                    Explore Tools
-                  </button>
+                  <div className="hidden md:flex items-center gap-3 mt-6">
+                    <button
+                      onClick={() => window.scrollTo({ top: window.innerHeight * 0.8, behavior: 'smooth' })}
+                      className="inline-flex px-6 py-3 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl text-white font-mono text-[10px] tracking-[0.2em] uppercase hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all duration-300"
+                    >
+                      Explore Tools
+                    </button>
+                    <button
+                      onClick={() => document.getElementById('how-to-use')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="inline-flex px-6 py-3 rounded-full border border-[#FF3131]/30 bg-[#FF3131]/5 backdrop-blur-xl text-[#FF3131] font-mono text-[10px] tracking-[0.2em] uppercase hover:bg-[#FF3131]/10 hover:border-[#FF3131]/60 hover:shadow-[0_0_20px_rgba(255,49,49,0.2)] transition-all duration-300"
+                    >
+                      How It Works
+                    </button>
+                  </div>
                 </motion.div>
               </div>
 
               <ToolGrid onSelect={setActiveTool} />
+              <HowToUse onSelect={setActiveTool} />
             </motion.div>
           ) : (
             <ToolDashboard key={activeTool} activeTool={activeTool} onBack={() => setActiveTool(null)} />

@@ -44,3 +44,5 @@ build/
 out/
 .cache/
 *.tsbuildinfo
+
+.claude/
