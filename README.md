@@ -165,7 +165,7 @@ ergon/
 
 ```powershell
 # 1. Clone
-git clone https://github.com/akstrek/ergon.git
+git clone https://github.com/akstrek/Ergon-AI-Agent-ROI-Tracker.git
 cd ergon\frontend
 
 # 2. Install
