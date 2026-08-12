@@ -23,8 +23,9 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
   return (
     <>
       <header className="fixed top-0 left-0 w-full z-[9999] px-6 md:px-[4%] h-[100px] md:h-[120px] flex items-center justify-between pointer-events-none">
-        <div
-          className="flex items-center gap-[7.6px] md:gap-[11.4px] pointer-events-auto cursor-pointer group"
+        <button
+          type="button"
+          className="flex items-center gap-[7.6px] md:gap-[11.4px] pointer-events-auto cursor-pointer group appearance-none bg-transparent text-left"
           onClick={() => handleNav(null)}
         >
           <div className="flex items-center justify-center transition-all group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter shrink-0">
@@ -35,15 +36,16 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
           <span className="font-brand font-bold text-white text-[18px] md:text-[24px] tracking-[-0.05em] uppercase transition-all group-hover:tracking-[0.1em] truncate">
             {activeTool ? TOOLS.find(t => t.id === activeTool)?.label : 'ERGON'}
           </span>
-        </div>
+        </button>
 
         <nav className="hidden lg:flex items-center gap-6 pointer-events-auto px-10 py-2.5 rounded-full backdrop-blur-2xl bg-white/[0.03] border border-white/5">
           <div className="flex items-center gap-6">
             {TOOLS.map((tool) => (
               <Magnetic key={tool.id}>
-                <div
+                <button
+                  type="button"
                   onClick={() => handleNav(tool.id)}
-                  className="relative cursor-pointer group flex flex-col items-center px-4"
+                  className="relative cursor-pointer group flex flex-col items-center px-4 appearance-none bg-transparent text-left"
                 >
                   <motion.span
                     animate={{
@@ -64,7 +66,7 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
                       />
                     )}
                   </AnimatePresence>
-                </div>
+                </button>
               </Magnetic>
             ))}
           </div>
@@ -104,6 +106,8 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
 
         <div className="lg:hidden flex items-center gap-4 pointer-events-auto relative z-[10001]">
           <button
+            type="button"
+            aria-label="Open menu"
             className={`flex items-center justify-center p-3 text-white glowing-btn transition-all duration-300 ${menuOpen ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}`}
             onClick={() => setMenuOpen(!menuOpen)}
           >
@@ -126,6 +130,8 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
             className="fixed inset-0 z-[10000] bg-[#0a0a0a]/90 flex flex-col items-center p-6 pt-[120px] pb-10 gap-8 pointer-events-auto overflow-y-auto"
           >
             <motion.button
+              type="button"
+              aria-label="Close menu"
               initial={{ opacity: 0, rotate: -90 }}
               animate={{ opacity: 1, rotate: 0 }}
               transition={{ delay: 0.2 }}
@@ -136,13 +142,14 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
             </motion.button>
 
             {TOOLS.map((tool, idx) => (
-              <motion.div
+              <motion.button
                 key={tool.id}
+                type="button"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 onClick={() => handleNav(tool.id)}
-                className="text-center w-full max-w-xs shrink-0"
+                className="text-center w-full max-w-xs shrink-0 appearance-none bg-transparent"
               >
                 <div className="text-white font-brand font-bold tracking-widest uppercase text-xl mb-2 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">
                   {tool.name}
@@ -150,7 +157,7 @@ export const Header = ({ activeTool, onNavigate }: { activeTool: string | null; 
                 <div className="text-[#7f8c8d] text-[10px] font-mono tracking-[0.2em] uppercase">
                   {tool.desc}
                 </div>
-              </motion.div>
+              </motion.button>
             ))}
 
             {!user && (

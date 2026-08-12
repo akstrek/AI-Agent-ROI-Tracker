@@ -10,38 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-const StarfieldComponent = () => {
-    const canvasRef = React.useRef<HTMLCanvasElement>(null);
-    React.useEffect(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      let w = canvas.width = window.innerWidth;
-      let h = canvas.height = window.innerHeight;
-      const stars = Array.from({ length: 250 }, () => ({
-        x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.2 + 0.3,
-        baseR: Math.random() * 1.2 + 0.3, vx: (Math.random() - 0.5) * 0.05, vy: (Math.random() - 0.5) * 0.05,
-      }));
-      let animationFrameId: number;
-      const render = () => {
-        ctx.clearRect(0, 0, w, h);
-        stars.forEach(star => {
-          star.x += star.vx; star.y += star.vy;
-          if (star.x < 0) star.x = w; if (star.x > w) star.x = 0;
-          if (star.y < 0) star.y = h; if (star.y > h) star.y = 0;
-          ctx.beginPath(); ctx.arc(star.x, star.y, star.baseR, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-          ctx.fill();
-        });
-        animationFrameId = requestAnimationFrame(render);
-      };
-      render();
-      return () => cancelAnimationFrame(animationFrameId);
-    }, []);
-    return <canvas ref={canvasRef} className="w-full h-full opacity-40" />;
-};
+import { Starfield } from '@/components/canvas/Starfield';
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -72,7 +41,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen w-full bg-[#0a0a0a] flex items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <StarfieldComponent />
+        <Starfield />
       </div>
 
       <motion.div
@@ -97,7 +66,7 @@ export default function ResetPassword() {
               <Send className="text-[#FF3131] w-8 h-8" />
             </div>
             <h2 className="text-3xl font-brand font-bold text-white uppercase tracking-tight">Check your <br /> inbox</h2>
-            <p className="text-[#8E9299]">We've sent a recovery link to <span className="text-white">{email}</span>. Please check your spam folder if you don't see it.</p>
+            <p className="text-[#8E9299]">We&apos;ve sent a recovery link to <span className="text-white">{email}</span>. Please check your spam folder if you don&apos;t see it.</p>
             <div className="flex flex-col gap-3 w-full">
               <Button
                 onClick={() => { setSubmitted(false); setEmail(''); setError(null); }}

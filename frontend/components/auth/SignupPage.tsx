@@ -152,8 +152,9 @@ export default function SignupPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">First Name</Label>
+                    <Label htmlFor="firstName" className="text-[10px] uppercase tracking-widest text-[#8E9299]">First Name</Label>
                     <Input
+                      id="firstName"
                       placeholder="John"
                       value={formData.firstName}
                       onChange={e => updateFormData({ firstName: e.target.value })}
@@ -161,8 +162,9 @@ export default function SignupPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Last Name</Label>
+                    <Label htmlFor="lastName" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Last Name</Label>
                     <Input
+                      id="lastName"
                       placeholder="Doe"
                       value={formData.lastName}
                       onChange={e => updateFormData({ lastName: e.target.value })}
@@ -171,8 +173,9 @@ export default function SignupPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Email Address</Label>
+                  <Label htmlFor="signup-email" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Email Address</Label>
                   <Input
+                    id="signup-email"
                     type="email"
                     placeholder="john@company.com"
                     value={formData.email}
@@ -195,16 +198,17 @@ export default function SignupPage() {
               </div>
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Password</Label>
+                  <Label htmlFor="signup-password" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Password</Label>
                   <div className="relative">
                     <Input
+                      id="signup-password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={e => updateFormData({ password: e.target.value })}
                       className={`${inputClass} pr-10`}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-[#7f8c8d] hover:text-white transition-colors">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-3 text-[#7f8c8d] hover:text-white transition-colors">
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
@@ -213,16 +217,17 @@ export default function SignupPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Confirm Password</Label>
                   <div className="relative">
                     <Input
+                      id="confirmPassword"
                       type={showConfirm ? "text" : "password"}
                       placeholder="••••••••"
                       value={formData.confirmPassword}
                       onChange={e => updateFormData({ confirmPassword: e.target.value })}
                       className={`${inputClass} pr-10`}
                     />
-                    <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-3 text-[#7f8c8d] hover:text-white transition-colors">
+                    <button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? 'Hide password' : 'Show password'} className="absolute right-3 top-3 text-[#7f8c8d] hover:text-white transition-colors">
                       {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
@@ -243,8 +248,9 @@ export default function SignupPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Job Title</Label>
+                    <Label htmlFor="jobTitle" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Job Title</Label>
                     <Input
+                      id="jobTitle"
                       placeholder="AI Lead"
                       value={formData.jobTitle}
                       onChange={e => updateFormData({ jobTitle: e.target.value })}
@@ -252,8 +258,9 @@ export default function SignupPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Team Name</Label>
+                    <Label htmlFor="teamName" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Team Name</Label>
                     <Input
+                      id="teamName"
                       placeholder="Neural Core"
                       value={formData.teamName}
                       onChange={e => updateFormData({ teamName: e.target.value })}
@@ -262,9 +269,9 @@ export default function SignupPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Team Size</Label>
+                  <Label htmlFor="teamSize" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Team Size</Label>
                   <Select onValueChange={(v) => updateFormData({ teamSize: (v as string | null) ?? '' })}>
-                    <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                    <SelectTrigger id="teamSize" className="bg-black/50 border-white/10 text-white">
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#0a0a0f] border-white/10 text-white">
@@ -277,9 +284,9 @@ export default function SignupPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-[#8E9299]">Primary Use Case</Label>
+                  <Label htmlFor="useCase" className="text-[10px] uppercase tracking-widest text-[#8E9299]">Primary Use Case</Label>
                   <Select onValueChange={(v) => updateFormData({ useCase: (v as string | null) ?? '' })}>
-                    <SelectTrigger className="bg-black/50 border-white/10 text-white">
+                    <SelectTrigger id="useCase" className="bg-black/50 border-white/10 text-white">
                       <SelectValue placeholder="Choose objective" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#0a0a0f] border-white/10 text-white">

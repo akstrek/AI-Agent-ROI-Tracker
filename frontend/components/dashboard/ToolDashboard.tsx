@@ -42,6 +42,7 @@ export const ToolDashboard = ({ activeTool, onBack }: { activeTool: string, onBa
           </div>
           <div className="hidden lg:flex gap-4">
             <motion.button
+              type="button"
               whileHover={{
                 backgroundColor: '#ffffff',
                 color: '#000000',
@@ -52,12 +53,13 @@ export const ToolDashboard = ({ activeTool, onBack }: { activeTool: string, onBa
             >
               Export Data
             </motion.button>
-            <button className="p-3 bg-white text-black rounded-lg"><Activity className="w-5 h-5" /></button>
+            <button type="button" aria-label="Activity" className="p-3 bg-white text-black rounded-lg"><Activity className="w-5 h-5" /></button>
           </div>
         </div>
 
         <div className="lg:hidden -mb-4">
           <motion.button
+            type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full glass py-4 px-6 rounded-xl text-[10px] tracking-[0.2em] uppercase transition-all font-sans font-bold bg-white/5 border border-white/10 text-white flex items-center justify-center gap-2"

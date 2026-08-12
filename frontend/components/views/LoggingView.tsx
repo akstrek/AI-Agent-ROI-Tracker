@@ -219,13 +219,15 @@ export const LoggingView = memo(function LoggingView() {
             </div>
             <div className="space-y-2">
               <label className="text-[9px] uppercase tracking-[0.2em] text-[#7f8c8d]">Status</label>
-              <div
+              <button
+                type="button"
+                aria-pressed={complete}
                 onClick={() => setComplete(!complete)}
-                className={`w-full border p-4 rounded-lg flex items-center justify-between cursor-pointer transition-all h-[54px] ${complete ? 'bg-[#FF3131]/20 border-[#FF3131] shadow-[0_0_15px_rgba(255,49,49,0.2)]' : 'bg-[#0a0a0a]/50 border-[#7f8c8d]/30 hover:border-white'}`}
+                className={`w-full border p-4 rounded-lg flex items-center justify-between cursor-pointer transition-all h-[54px] appearance-none text-left ${complete ? 'bg-[#FF3131]/20 border-[#FF3131] shadow-[0_0_15px_rgba(255,49,49,0.2)]' : 'bg-[#0a0a0a]/50 border-[#7f8c8d]/30 hover:border-white'}`}
               >
                 <span className={`text-[10px] font-mono tracking-widest ${complete ? 'text-[#FF3131]' : 'text-[#7f8c8d]'}`}>{complete ? 'COMPLETED' : 'PENDING'}</span>
                 <div className={`w-3 h-3 rounded-full border border-current ${complete ? 'bg-[#FF3131]' : 'bg-transparent'}`} />
-              </div>
+              </button>
             </div>
           </div>
 

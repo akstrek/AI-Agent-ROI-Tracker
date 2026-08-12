@@ -10,35 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, ShieldCheck, ShieldAlert, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-const StarfieldComponent = () => {
-    const canvasRef = React.useRef<HTMLCanvasElement>(null);
-    React.useEffect(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const w = canvas.width = window.innerWidth;
-      const h = canvas.height = window.innerHeight;
-      const stars = Array.from({ length: 250 }, () => ({
-        x: Math.random() * w, y: Math.random() * h,
-        baseR: Math.random() * 1.2 + 0.3,
-      }));
-      let animationFrameId: number;
-      const render = () => {
-        ctx.clearRect(0, 0, w, h);
-        stars.forEach(star => {
-          ctx.beginPath(); ctx.arc(star.x, star.y, star.baseR, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-          ctx.fill();
-        });
-        animationFrameId = requestAnimationFrame(render);
-      };
-      render();
-      return () => cancelAnimationFrame(animationFrameId);
-    }, []);
-    return <canvas ref={canvasRef} className="w-full h-full opacity-40" />;
-};
+import { Starfield } from '@/components/canvas/Starfield';
 
 export default function UpdatePassword() {
   const router = useRouter();
@@ -142,7 +114,7 @@ export default function UpdatePassword() {
   return (
     <div className="min-h-screen w-full bg-[#0a0a0a] flex items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <StarfieldComponent />
+        <Starfield />
       </div>
 
       <motion.div
@@ -248,6 +220,7 @@ export default function UpdatePassword() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                       className="absolute right-4 top-4 text-[#7f8c8d] hover:text-white transition-colors"
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -271,6 +244,7 @@ export default function UpdatePassword() {
                     <button
                       type="button"
                       onClick={() => setShowConfirm(!showConfirm)}
+                      aria-label={showConfirm ? 'Hide password' : 'Show password'}
                       className="absolute right-4 top-4 text-[#7f8c8d] hover:text-white transition-colors"
                     >
                       {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}

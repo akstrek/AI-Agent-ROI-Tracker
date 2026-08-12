@@ -83,31 +83,3 @@ export const supabase = new Proxy({} as SupabaseClient, {
     return Reflect.get(getSupabase(), prop, receiver);
   }
 });
-
-export const authSkeletons = {
-  signIn: async (email: string, password: string) => {
-    return supabase.auth.signInWithPassword({ email, password });
-  },
-
-  signUp: async (email: string, password: string, metadata: any) => {
-    return supabase.auth.signUp({
-      email,
-      password,
-      options: { data: metadata }
-    });
-  },
-
-  resetPassword: async (email: string) => {
-    return supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/update-password`
-    });
-  },
-
-  updateUser: async (attributes: any) => {
-    return supabase.auth.updateUser(attributes);
-  },
-
-  signOut: async () => {
-    return supabase.auth.signOut();
-  }
-};

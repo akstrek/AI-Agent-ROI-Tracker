@@ -13,11 +13,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Mail, Lock, LogOut, Eye, EyeOff } from 'lucide-react';
 import { logEvent } from '@/lib/analytics';
+import { E_PATH } from '@/lib/constants';
 
 const MOUNTAIN_IMG = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000";
 
 const AccountNavbar = () => {
-    const E_PATH = "M 70 25 H 30 L 60 45 L 30 65 H 70";
     const { signOut } = useAuth();
     const [loggingOut, setLoggingOut] = React.useState(false);
 
@@ -255,7 +255,7 @@ export default function AccountPage() {
                             {user?.user_metadata?.first_name} {user?.user_metadata?.last_name}
                         </h1>
                         <p className="text-[#8E9299] font-mono tracking-[0.2em] uppercase text-sm">
-                            {user?.user_metadata?.job_title || 'Lead Strategist'} // ALPHA NODE
+                            {user?.user_metadata?.job_title || 'Lead Strategist'} {'// ALPHA NODE'}
                         </p>
                     </div>
                 </section>
@@ -349,6 +349,7 @@ export default function AccountPage() {
                                         <button
                                             type="button"
                                             onClick={() => setShowPwdNew(v => !v)}
+                                            aria-label={showPwdNew ? 'Hide password' : 'Show password'}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7f8c8d] hover:text-white transition-colors"
                                         >
                                             {showPwdNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -365,6 +366,7 @@ export default function AccountPage() {
                                         <button
                                             type="button"
                                             onClick={() => setShowPwdConfirm(v => !v)}
+                                            aria-label={showPwdConfirm ? 'Hide password' : 'Show password'}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7f8c8d] hover:text-white transition-colors"
                                         >
                                             {showPwdConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
