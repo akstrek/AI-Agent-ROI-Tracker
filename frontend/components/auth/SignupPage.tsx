@@ -72,8 +72,12 @@ export default function SignupPage() {
       return;
     }
 
+    // `/dashboard` is now middleware-protected and this user isn't
+    // authenticated yet (email confirmation pending in most Supabase
+    // configs), so sending them there would just bounce them straight back
+    // to /auth/login. Land them on login instead.
     sessionStorage.setItem('justSignedUp', '1');
-    router.push('/dashboard');
+    router.push('/auth/login?signup=1');
   };
 
   const calculateStrength = () => {

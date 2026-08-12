@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const getSupabaseConfig = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -67,7 +68,7 @@ export const getSupabase = (): SupabaseClient => {
       supabaseInstance = createMockSupabase();
     } else {
       try {
-        supabaseInstance = createClient(url, key);
+        supabaseInstance = createBrowserClient(url, key);
       } catch (e) {
         console.error('Failed to initialize Supabase client:', e);
         supabaseInstance = createMockSupabase();

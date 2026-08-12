@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +36,14 @@ export default function LoginPage() {
     }
 
     sessionStorage.removeItem('justSignedUp');
-    router.push('/dashboard');
+
+    // Only honor returnUrl if it's a same-origin relative path — guards
+    // against open redirect to absolute URLs (returnUrl=https://evil.com)
+    // and protocol-relative URLs (returnUrl=//evil.com), both of which the
+    // browser would treat as a redirect off-site.
+    const returnUrl = searchParams.get('returnUrl');
+    const isSafeReturnUrl = !!returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//');
+    router.push(isSafeReturnUrl ? returnUrl : '/dashboard');
   };
 
   return (
@@ -81,6 +89,14 @@ export default function LoginPage() {
               Track what your agents actually do.
             </p>
           </div>
+
+          {searchParams.get('signup') === '1' && (
+            <Alert className="bg-[#22c55e]/10 border-[#22c55e]/30">
+              <AlertDescription className="text-[#22c55e] text-xs">
+                Account created. Confirm your email if prompted, then log in below.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">

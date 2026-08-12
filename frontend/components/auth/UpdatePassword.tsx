@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, ShieldCheck, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, ShieldAlert, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const StarfieldComponent = () => {
@@ -48,25 +49,54 @@ export default function UpdatePassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
+  // 'checking' → waiting to confirm this is a genuine recovery visit
+  // 'ready'    → recovery confirmed, password form may render
+  // 'no-recovery' → an ordinary (or no) session, not a recovery visit
+  const [status, setStatus] = useState<'checking' | 'ready' | 'no-recovery'>('checking');
+  const sessionReady = status === 'ready';
 
-  // Supabase fires PASSWORD_RECOVERY when the reset link is clicked.
-  // We wait for that event before allowing form submission — this is
-  // the only safe way to confirm the token in the URL hash was valid.
+  // Supabase fires PASSWORD_RECOVERY when a reset link is clicked. We
+  // require that event (or an explicit recovery signal in the URL) before
+  // allowing the password form to render — merely having ANY active session
+  // is not sufficient (a normally logged-in user must not be able to land
+  // here and change their password without going through the reset flow).
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        setSessionReady(true);
+        if (timeoutId) clearTimeout(timeoutId);
+        setStatus('ready');
       }
     });
 
-    // Also check if a session already exists from the URL hash
-    // (Supabase may process it before the listener fires on mount)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setSessionReady(true);
-    });
+    // Fallback: a recovery link can land as a hash fragment
+    // (#type=recovery&access_token=...) or a PKCE `code`/`token_hash` query
+    // param depending on Supabase's auth flow type. Treat either as a valid
+    // recovery visit even if the PASSWORD_RECOVERY event is slow to fire.
+    const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
+    const hasRecoverySignal =
+      hash.includes('type=recovery') ||
+      params.get('type') === 'recovery' ||
+      params.has('token_hash') ||
+      params.has('code');
 
-    return () => subscription.unsubscribe();
+    if (hasRecoverySignal) {
+      setStatus('ready');
+    } else {
+      // Give the PASSWORD_RECOVERY event a brief window to arrive (Supabase
+      // processes the URL asynchronously on load) before concluding this is
+      // a plain, non-recovery visit.
+      timeoutId = setTimeout(() => {
+        setStatus((current) => (current === 'checking' ? 'no-recovery' : current));
+      }, 2500);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,6 +185,30 @@ export default function UpdatePassword() {
                   transition={{ duration: 2.2, ease: 'linear' }}
                 />
               </motion.div>
+            </motion.div>
+          ) : status === 'no-recovery' ? (
+            /* ── No genuine recovery session — refuse to render the form ── */
+            <motion.div
+              key="no-recovery"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center text-center space-y-5 py-4"
+            >
+              <div className="w-16 h-16 rounded-full bg-[#FF3131]/10 flex items-center justify-center">
+                <ShieldAlert className="w-8 h-8 text-[#FF3131]" />
+              </div>
+              <h2 className="text-3xl font-brand font-bold text-white uppercase tracking-tight">
+                Reset Link<br />Required
+              </h2>
+              <p className="text-[#8E9299] text-sm">
+                This page only works from a password reset email. Request a new link to continue.
+              </p>
+              <Link
+                href="/auth/reset"
+                className="w-full inline-flex items-center justify-center h-12 bg-white text-black font-brand font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl hover:bg-white/90 transition-all"
+              >
+                Request Reset Link
+              </Link>
             </motion.div>
           ) : (
             /* ── Form state ── */
