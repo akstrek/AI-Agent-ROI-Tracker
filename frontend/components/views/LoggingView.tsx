@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/analytics';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TaskHistory } from '@/components/views/TaskHistory';
 
 const UNDO_SECONDS = 20;
 
@@ -19,6 +20,7 @@ export const LoggingView = memo(function LoggingView() {
   const [lastTaskId, setLastTaskId] = useState<string | null>(null);
   const [undoCountdown, setUndoCountdown] = useState(0);
   const undoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   const [form, setForm] = useState({
     task_descriptor: '',
@@ -59,6 +61,7 @@ export const LoggingView = memo(function LoggingView() {
     await supabase.from('tasks').delete().eq('id', lastTaskId);
     await logEvent(user.id, 'task_undone', { task_id: lastTaskId });
     clearUndo();
+    setHistoryRefreshKey(k => k + 1);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -106,6 +109,7 @@ export const LoggingView = memo(function LoggingView() {
     setSubmitting(false);
 
     if (inserted?.id) startUndoTimer(inserted.id);
+    setHistoryRefreshKey(k => k + 1);
   };
 
   return (
@@ -117,6 +121,7 @@ export const LoggingView = memo(function LoggingView() {
             <label className="text-[9px] uppercase tracking-[0.2em] text-[#7f8c8d]">Task Descriptor</label>
             <input
               type="text"
+              required
               placeholder="CRITICAL OVERRIDE..."
               value={form.task_descriptor}
               onChange={e => handleChange('task_descriptor', e.target.value)}
@@ -235,56 +240,11 @@ export const LoggingView = memo(function LoggingView() {
       </div>
 
       <div className="lg:col-span-2 flex flex-col gap-8">
-        <div className="bg-[#0a0a0a]/40 backdrop-blur-md p-10 rounded-2xl border border-[#7f8c8d]/20 hover:shadow-[0_0_25px_rgba(255,255,255,0.1)] transition-all duration-500 flex flex-col md:flex-row items-center justify-between gap-10">
-          <div>
-            <h3 className="text-white text-[11px] font-mono mb-2 uppercase tracking-[0.2em]">Efficiency Yield</h3>
-            <p className="text-7xl text-white font-brand font-bold drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] tracking-tighter">94.2<span className="text-3xl text-[#7f8c8d]">%</span></p>
-          </div>
-          <div className="flex items-end gap-3 h-32 w-full md:w-auto flex-1 md:flex-none justify-end">
-            {[30, 45, 35, 60, 50, 95].map((val, i, arr) => (
-              <div key={i} className="relative w-8 h-full flex items-end">
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${val}%` }}
-                  transition={{ duration: 1, delay: i * 0.1, ease: 'easeOut' }}
-                  className={`w-full rounded-t-sm ${i === arr.length - 1 ? 'bg-white shadow-[0_0_25px_rgba(255,255,255,0.9)]' : 'bg-white/10'}`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#0a0a0a]/40 backdrop-blur-md p-10 rounded-2xl border border-[#7f8c8d]/20 hover:shadow-[0_0_25px_rgba(255,255,255,0.1)] transition-all duration-500 flex-1 flex flex-col">
-          <h3 className="text-white text-[11px] font-mono mb-6 uppercase tracking-[0.2em]">Aggregated ROI Velocity</h3>
-          <div className="flex-1 relative w-full h-[180px]">
-            <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 40">
-              <defs>
-                <linearGradient id="line-glow" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FF3131" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#FF3131" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <motion.path
-                d="M 0 35 L 10 30 L 20 32 L 30 15 L 40 20 L 50 10 L 60 12 L 70 5 L 80 8 L 90 2 L 100 6"
-                fill="none"
-                stroke="#FF3131"
-                strokeWidth="1"
-                className="drop-shadow-[0_0_10px_rgba(255,49,49,1)]"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 2, ease: "easeInOut" }}
-              />
-              <motion.path
-                d="M 0 35 L 10 30 L 20 32 L 30 15 L 40 20 L 50 10 L 60 12 L 70 5 L 80 8 L 90 2 L 100 6 L 100 40 L 0 40 Z"
-                fill="url(#line-glow)"
-                opacity="0.5"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                transition={{ duration: 1, delay: 1 }}
-              />
-            </svg>
-          </div>
-        </div>
+        <TaskHistory
+          refreshKey={historyRefreshKey}
+          pendingTaskId={lastTaskId}
+          onPendingTaskRemoved={clearUndo}
+        />
       </div>
     </div>
   );
