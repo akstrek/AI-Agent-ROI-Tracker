@@ -74,7 +74,7 @@ export const LoggingView = memo(function LoggingView() {
 
   const handleUndo = async () => {
     if (!lastTaskId || !user) return;
-    await supabase.from('tasks').delete().eq('id', lastTaskId);
+    await supabase.from('tasks').delete().eq('id', lastTaskId).eq('user_id', user.id);
     await logEvent(user.id, 'task_undone', { task_id: lastTaskId });
     clearUndo();
     setHistoryRefreshKey(k => k + 1);

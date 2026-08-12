@@ -1,10 +1,12 @@
 'use client'
 
 import { motion } from 'motion/react';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/analytics';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { localDayKey, daysAgoLocalMidnight } from '@/lib/dates';
 
 interface Task {
   time_mins: number | null;
@@ -21,32 +23,39 @@ interface Metrics {
 
 function getPeriodBounds(period: string): { start: Date; prevStart: Date; days: number } {
   const days = period === 'Daily' ? 1 : period === 'Weekly' ? 7 : 30;
-  const now = new Date();
-  const start = new Date(now.getTime() - days * 86400000);
-  const prevStart = new Date(start.getTime() - days * 86400000);
+  // Calendar-day aligned bounds (includes today), using local-midnight math
+  // so the window doesn't drift across DST boundaries.
+  const start = daysAgoLocalMidnight(days - 1);
+  const prevStart = daysAgoLocalMidnight(2 * days - 1);
   return { start, prevStart, days };
 }
 
 function buildTrendPath(tasks: Task[], days: number): string {
   if (tasks.length === 0) return 'M 0 35 L 100 35';
 
-  // Build day buckets
+  // Build day buckets, keyed by local calendar day (not the UTC date the
+  // ISO string happens to slice to).
   const buckets: Record<string, number> = {};
-  const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 86400000);
-    buckets[d.toISOString().slice(0, 10)] = 0;
+    buckets[localDayKey(daysAgoLocalMidnight(i))] = 0;
   }
   tasks.forEach(t => {
-    const day = t.created_at.slice(0, 10);
+    const day = localDayKey(new Date(t.created_at));
     if (day in buckets) buckets[day]++;
   });
 
   const points = Object.values(buckets);
   const max = Math.max(...points, 1);
+
+  if (points.length === 1) {
+    // A lone `M x y` renders nothing — emit a short horizontal segment instead.
+    const y = 35 - (points[0] / max) * 30;
+    return `M 40 ${y.toFixed(1)} L 60 ${y.toFixed(1)}`;
+  }
+
   return points
     .map((count, i) => {
-      const x = points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
+      const x = (i / (points.length - 1)) * 100;
       const y = 35 - (count / max) * 30;
       return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
     })
@@ -58,16 +67,20 @@ export const RoiView = memo(function RoiView() {
   const [period, setPeriod] = useState('Weekly');
   const [metrics, setMetrics] = useState<Metrics>({ avgTime: 0, totalHrs: 0, completionDelta: 0, trendPath: 'M 0 35 L 100 35' });
   const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef(0);
 
   const agents = ['Ergon-Prime', 'Synth-01', 'Ghost-Node'];
 
   const fetchMetrics = useCallback(async (selectedPeriod: string) => {
     if (!user) return;
+    const id = ++requestRef.current;
     setDataLoading(true);
+    setError(null);
 
     const { start, prevStart, days } = getPeriodBounds(selectedPeriod);
 
-    const [{ data: current }, { data: prev }] = await Promise.all([
+    const [{ data: current, error: currentError }, { data: prev, error: prevError }] = await Promise.all([
       supabase
         .from('tasks')
         .select('time_mins, status, created_at')
@@ -80,6 +93,14 @@ export const RoiView = memo(function RoiView() {
         .gte('created_at', prevStart.toISOString())
         .lt('created_at', start.toISOString()),
     ]);
+
+    if (id !== requestRef.current) return; // a newer fetch superseded this one
+
+    if (currentError || prevError) {
+      setError((currentError ?? prevError)!.message);
+      setDataLoading(false);
+      return;
+    }
 
     const cur = (current as Task[]) ?? [];
     const prv = (prev as { status: string }[]) ?? [];
@@ -111,8 +132,12 @@ export const RoiView = memo(function RoiView() {
     if (user) logEvent(user.id, 'roi_period_changed', { period: p });
   };
 
+  const isNegativeDelta = metrics.completionDelta < 0;
   const deltaSign = metrics.completionDelta >= 0 ? '+' : '';
-  const deltaColor = metrics.completionDelta >= 0 ? 'text-[#FF3131]' : 'text-[#7f8c8d]';
+  const deltaColor = isNegativeDelta ? 'text-[#FF3131]' : 'text-white';
+  const deltaGlow = isNegativeDelta ? 'drop-shadow-[0_0_15px_rgba(255,49,49,0.4)]' : 'drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]';
+  const deltaStroke = isNegativeDelta ? '#FF3131' : '#ffffff';
+  const deltaIconGlow = isNegativeDelta ? 'drop-shadow-[0_0_10px_rgba(255,49,49,1)]' : 'drop-shadow-[0_0_10px_rgba(255,255,255,1)]';
 
   return (
     <div className="bg-[#0a0a0a]/40 backdrop-blur-md p-10 rounded-3xl border border-[#7f8c8d]/20 min-h-[600px] relative overflow-hidden flex flex-col hover:shadow-[0_0_40px_rgba(255,255,255,0.08)] transition-all duration-500">
@@ -131,6 +156,12 @@ export const RoiView = memo(function RoiView() {
           ))}
         </div>
       </div>
+
+      {error && (
+        <Alert variant="destructive" className="relative z-20 mb-8">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="absolute inset-0 pointer-events-none z-0 p-10">
         <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" preserveAspectRatio="none">
@@ -179,19 +210,26 @@ export const RoiView = memo(function RoiView() {
           <p className="text-[9px] md:text-[10px] uppercase tracking-[0.15em] md:tracking-[0.2em] text-[#7f8c8d] relative z-10">Completion Rate Delta</p>
           <div className="flex items-center gap-4 relative z-10 mt-6 md:mt-6">
             <motion.div
-              animate={{ y: [0, -8, 0] }}
+              animate={{ y: isNegativeDelta ? [0, 8, 0] : [0, -8, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             >
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_10px_rgba(255,49,49,1)]">
+              <svg
+                width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={deltaStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className={deltaIconGlow}
+                style={isNegativeDelta ? { transform: 'rotate(180deg)' } : undefined}
+              >
                 <path d="M12 19V5M5 12l7-7 7 7"/>
               </svg>
             </motion.div>
-            <p className={`text-5xl md:text-6xl font-brand font-bold drop-shadow-[0_0_15px_rgba(255,49,49,0.4)] tracking-tighter ${deltaColor}`}>
+            <p className={`text-5xl md:text-6xl font-brand font-bold ${deltaGlow} tracking-tighter ${deltaColor}`}>
               {dataLoading ? '—' : `${deltaSign}${metrics.completionDelta}%`}
             </p>
           </div>
           <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-y-1/4 translate-x-1/4">
-            <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="1">
+            <svg
+              width="200" height="200" viewBox="0 0 24 24" fill="none" stroke={deltaStroke} strokeWidth="1"
+              style={isNegativeDelta ? { transform: 'rotate(180deg)' } : undefined}
+            >
               <path d="M12 19V5M5 12l7-7 7 7"/>
             </svg>
           </div>

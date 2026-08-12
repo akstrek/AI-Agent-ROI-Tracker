@@ -6,6 +6,8 @@ import { User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/analytics';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { localDayKey, daysAgoLocalMidnight } from '@/lib/dates';
 
 interface Task {
   node_assign: string;
@@ -18,7 +20,7 @@ interface NodeMember {
   name: string;
   type: string;
   avgTime: string;
-  compRate: string;
+  weekDelta: string;
   hrs: number;
   trend: number[];
 }
@@ -30,13 +32,10 @@ const NODE_TYPES: Record<string, string> = {
 };
 
 function buildTrend(tasks: Task[], node: string): number[] {
-  const now = new Date();
   return Array.from({ length: 5 }, (_, i) => {
-    const dayStr = new Date(now.getTime() - (4 - i) * 86400000)
-      .toISOString()
-      .slice(0, 10);
+    const dayKey = localDayKey(daysAgoLocalMidnight(4 - i));
     return tasks.filter(
-      t => t.node_assign === node && t.created_at.slice(0, 10) === dayStr
+      t => t.node_assign === node && localDayKey(new Date(t.created_at)) === dayKey
     ).length;
   });
 }
@@ -65,15 +64,23 @@ export const TeamView = memo(function TeamView() {
   const [totalHrs, setTotalHrs] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
     setDataLoading(true);
+    setError(null);
 
-    const { data } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('tasks')
       .select('node_assign, time_mins, status, created_at')
       .eq('user_id', user.id);
+
+    if (fetchError) {
+      setError(fetchError.message);
+      setDataLoading(false);
+      return;
+    }
 
     const tasks = (data as Task[]) ?? [];
 
@@ -95,7 +102,7 @@ export const TeamView = memo(function TeamView() {
         name,
         type: NODE_TYPES[name] ?? 'AI Node',
         avgTime,
-        compRate: computeDelta(tasks, name),
+        weekDelta: computeDelta(tasks, name),
         hrs,
         trend: buildTrend(tasks, name),
       };
@@ -109,13 +116,18 @@ export const TeamView = memo(function TeamView() {
     setTotalHrs(parseFloat((allMins / 60).toFixed(1)));
     setPendingCount(tasks.filter(t => t.status === 'PENDING').length);
     setDataLoading(false);
-
-    await logEvent(user.id, 'team_dashboard_viewed', { node_count: built.length });
   }, [user]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fire once per mount, not on every refetch — logging this in fetchData
+  // inflated analytics because fetchData reruns whenever `user` changes.
+  useEffect(() => {
+    if (!user) return;
+    void logEvent(user.id, 'team_dashboard_viewed');
+  }, [user]);
 
   const activeNodeCount = members.length;
 
@@ -152,6 +164,12 @@ export const TeamView = memo(function TeamView() {
         </div>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {!dataLoading && members.length === 0 ? (
         <div className="flex items-center justify-center h-48 bg-[#0a0a0a]/40 backdrop-blur-md rounded-3xl border border-[#7f8c8d]/20">
           <p className="text-[#7f8c8d] font-mono text-[11px] uppercase tracking-[0.2em]">
@@ -162,7 +180,7 @@ export const TeamView = memo(function TeamView() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {(dataLoading
             ? Array.from({ length: 4 }, (_, i) => ({
-                name: '—', type: '—', avgTime: '—', compRate: '—', hrs: 0,
+                name: '—', type: '—', avgTime: '—', weekDelta: '—', hrs: 0,
                 trend: [0, 0, 0, 0, 0], id: i,
               }))
             : members
@@ -185,7 +203,7 @@ export const TeamView = memo(function TeamView() {
                 </div>
                 <div>
                   <p className="text-[8px] uppercase tracking-[0.15em] text-[#7f8c8d] mb-1">Delta</p>
-                  <p className="text-xl text-[#FF3131] font-brand font-bold drop-shadow-[0_0_5px_rgba(255,49,49,0.5)]">{m.compRate}</p>
+                  <p className="text-xl text-[#FF3131] font-brand font-bold drop-shadow-[0_0_5px_rgba(255,49,49,0.5)]">{m.weekDelta}</p>
                 </div>
                 <div>
                   <p className="text-[8px] uppercase tracking-[0.15em] text-[#7f8c8d] mb-1">Hours</p>

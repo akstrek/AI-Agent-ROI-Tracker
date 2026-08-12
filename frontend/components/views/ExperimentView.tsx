@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'motion/react';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/analytics';
@@ -37,8 +37,11 @@ export const ExperimentView = memo(function ExperimentView() {
     condition_assignment: 'Latency Factor C',
   });
 
+  const requestRef = useRef(0);
+
   const fetchData = useCallback(async () => {
     if (!user) return;
+    const id = ++requestRef.current;
     setDataLoading(true);
     setError(null);
 
@@ -51,6 +54,8 @@ export const ExperimentView = memo(function ExperimentView() {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (id !== requestRef.current) return; // a newer fetch superseded this one
 
     if (expError) {
       setError(expError.message);
@@ -80,6 +85,8 @@ export const ExperimentView = memo(function ExperimentView() {
       taskQuery = taskQuery.gte('created_at', startOfDayLocal.toISOString());
     }
     const { data: tasks, error: tasksError } = await taskQuery;
+
+    if (id !== requestRef.current) return; // a newer fetch superseded this one
 
     if (tasksError) {
       setError(tasksError.message);
