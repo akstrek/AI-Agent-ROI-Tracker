@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/analytics';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CONDITIONS, fetchExperimentResults } from '@/lib/experiments';
 
 interface Experiment {
   id: string;
@@ -28,6 +30,7 @@ export const ExperimentView = memo(function ExperimentView() {
   const [syncRate, setSyncRate] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     start_date: '',
@@ -37,9 +40,10 @@ export const ExperimentView = memo(function ExperimentView() {
   const fetchData = useCallback(async () => {
     if (!user) return;
     setDataLoading(true);
+    setError(null);
 
     // Fetch the most recent non-completed experiment
-    const { data: expData } = await supabase
+    const { data: expData, error: expError } = await supabase
       .from('experiments')
       .select('*')
       .eq('user_id', user.id)
@@ -48,20 +52,49 @@ export const ExperimentView = memo(function ExperimentView() {
       .limit(1)
       .maybeSingle();
 
-    setActiveExp((expData as Experiment) ?? null);
+    if (expError) {
+      setError(expError.message);
+      setActiveExp(null);
+      setConditions([]);
+      setSyncRate(0);
+      setDataLoading(false);
+      return;
+    }
 
-    // Fetch tasks linked to an experiment condition
-    const { data: tasks } = await supabase
-      .from('tasks')
-      .select('experiment_link, time_mins, status')
-      .eq('user_id', user.id)
-      .neq('experiment_link', 'None (Control)');
+    const exp = (expData as Experiment) ?? null;
+    setActiveExp(exp);
+
+    if (!exp) {
+      // No experiment to scope results to — nothing to fetch.
+      setConditions([]);
+      setSyncRate(0);
+      setDataLoading(false);
+      return;
+    }
+
+    // Fetch tasks linked to this specific experiment via experiment_id,
+    // scoped to on-or-after the experiment's start_date (local midnight).
+    let taskQuery = fetchExperimentResults(user.id, exp.id);
+    if (exp.start_date) {
+      const startOfDayLocal = new Date(`${exp.start_date}T00:00:00`);
+      taskQuery = taskQuery.gte('created_at', startOfDayLocal.toISOString());
+    }
+    const { data: tasks, error: tasksError } = await taskQuery;
+
+    if (tasksError) {
+      setError(tasksError.message);
+      setConditions([]);
+      setSyncRate(0);
+      setDataLoading(false);
+      return;
+    }
 
     if (tasks && tasks.length > 0) {
       const groups: Record<string, { time_mins: number | null; status: string }[]> = {};
-      tasks.forEach((t: { experiment_link: string; time_mins: number | null; status: string }) => {
-        if (!groups[t.experiment_link]) groups[t.experiment_link] = [];
-        groups[t.experiment_link].push({ time_mins: t.time_mins, status: t.status });
+      tasks.forEach((t: { condition: string | null; time_mins: number | null; status: string }) => {
+        if (!t.condition) return;
+        if (!groups[t.condition]) groups[t.condition] = [];
+        groups[t.condition].push({ time_mins: t.time_mins, status: t.status });
       });
 
       const condResults: ConditionResult[] = Object.entries(groups).map(([name, rows]) => {
@@ -77,8 +110,9 @@ export const ExperimentView = memo(function ExperimentView() {
 
       setConditions(condResults);
 
-      const totalCompleted = tasks.filter((t: { status: string }) => t.status === 'COMPLETED').length;
-      setSyncRate(parseFloat(((totalCompleted / tasks.length) * 100).toFixed(2)));
+      const scopedTasks = tasks.filter((t: { condition: string | null }) => t.condition);
+      const totalCompleted = scopedTasks.filter((t: { status: string }) => t.status === 'COMPLETED').length;
+      setSyncRate(scopedTasks.length ? parseFloat(((totalCompleted / scopedTasks.length) * 100).toFixed(2)) : 0);
     } else {
       setConditions([]);
       setSyncRate(0);
@@ -95,8 +129,29 @@ export const ExperimentView = memo(function ExperimentView() {
     e.preventDefault();
     if (!user || !form.name) return;
     setSubmitting(true);
+    setError(null);
 
-    const { error } = await supabase.from('experiments').insert({
+    // Block deploying a second Running experiment — count Running
+    // experiments rather than assuming there's at most one already.
+    const { data: runningExps, error: runningError } = await supabase
+      .from('experiments')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'Running');
+
+    if (runningError) {
+      setError(runningError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    if (runningExps && runningExps.length > 0) {
+      setError('Halt the current experiment first.');
+      setSubmitting(false);
+      return;
+    }
+
+    const { error: insertError } = await supabase.from('experiments').insert({
       user_id: user.id,
       name: form.name,
       start_date: form.start_date || null,
@@ -104,32 +159,40 @@ export const ExperimentView = memo(function ExperimentView() {
       status: 'Running',
     });
 
-    if (!error) {
-      await logEvent(user.id, 'experiment_created', {
-        name: form.name,
-        condition: form.condition_assignment,
-      });
-      setForm({ name: '', start_date: '', condition_assignment: 'Latency Factor C' });
-      fetchData();
+    if (insertError) {
+      setError(insertError.message);
+      setSubmitting(false);
+      return;
     }
+
+    await logEvent(user.id, 'experiment_created', {
+      name: form.name,
+      condition: form.condition_assignment,
+    });
+    setForm({ name: '', start_date: '', condition_assignment: 'Latency Factor C' });
+    await fetchData();
     setSubmitting(false);
   };
 
   const handleStatusToggle = async () => {
     if (!activeExp || !user) return;
+    setError(null);
     const newStatus: 'Running' | 'Paused' = activeExp.status === 'Running' ? 'Paused' : 'Running';
-    await supabase.from('experiments').update({ status: newStatus }).eq('id', activeExp.id);
+    const { error: updateError } = await supabase.from('experiments').update({ status: newStatus }).eq('id', activeExp.id);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
     await logEvent(user.id, 'experiment_status_changed', { id: activeExp.id, status: newStatus });
-    setActiveExp(prev => prev ? { ...prev, status: newStatus } : null);
+    await fetchData();
   };
 
   const status = activeExp?.status ?? 'Running';
   const displayConditions = conditions.length > 0
     ? conditions
-    : [
-        { name: 'Alpha - Flow A', count: 0, avgTime: 0, completionRate: 0 },
-        { name: 'Beta - Flow B', count: 0, avgTime: 0, completionRate: 0 },
-      ];
+    : CONDITIONS.map(name => ({ name, count: 0, avgTime: 0, completionRate: 0 }));
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -168,6 +231,13 @@ export const ExperimentView = memo(function ExperimentView() {
                 <option>Strict Mode</option>
               </select>
             </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <motion.button
               type="submit"
               disabled={submitting || !form.name}
@@ -204,6 +274,11 @@ export const ExperimentView = memo(function ExperimentView() {
               <h3 className="text-white text-[11px] font-mono uppercase tracking-[0.2em] mb-2">
                 {activeExp ? activeExp.name : 'Live Experiment Results'}
               </h3>
+              {activeExp && (
+                <p className="text-[9px] text-[#7f8c8d]/70 font-mono uppercase tracking-widest mb-2">
+                  {activeExp.condition_assignment}
+                </p>
+              )}
               <div className="flex items-center gap-3">
                 <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${status === 'Running' ? 'bg-[#FF3131] text-[#FF3131] animate-pulse' : 'bg-[#7f8c8d] text-[#7f8c8d]'}`} />
                 <p className="text-[10px] text-[#7f8c8d] font-mono uppercase tracking-widest">

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/analytics';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TaskHistory } from '@/components/views/TaskHistory';
+import { CONDITIONS, fetchActiveExperiment, type ActiveExperiment } from '@/lib/experiments';
 
 const UNDO_SECONDS = 20;
 
@@ -21,6 +22,8 @@ export const LoggingView = memo(function LoggingView() {
   const [undoCountdown, setUndoCountdown] = useState(0);
   const undoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+
+  const [activeExp, setActiveExp] = useState<ActiveExperiment | null>(null);
 
   const [form, setForm] = useState({
     task_descriptor: '',
@@ -39,6 +42,19 @@ export const LoggingView = memo(function LoggingView() {
   useEffect(() => {
     return () => { if (undoTimer.current) clearInterval(undoTimer.current); };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setActiveExp(null);
+      return;
+    }
+    fetchActiveExperiment(user.id).then(({ data, error }) => {
+      if (cancelled) return;
+      setActiveExp(!error && data ? (data as ActiveExperiment) : null);
+    });
+    return () => { cancelled = true; };
+  }, [user]);
 
   const startUndoTimer = (id: string) => {
     setLastTaskId(id);
@@ -75,6 +91,8 @@ export const LoggingView = memo(function LoggingView() {
     setError(null);
     clearUndo();
 
+    const condition = activeExp && form.experiment_link !== 'None (Control)' ? form.experiment_link : null;
+
     const { data: inserted, error: insertError } = await supabase
       .from('tasks')
       .insert({
@@ -85,6 +103,8 @@ export const LoggingView = memo(function LoggingView() {
         mode: isAi ? 'AI-Assist' : 'Human',
         time_mins: form.time_mins ? parseInt(form.time_mins, 10) : null,
         experiment_link: form.experiment_link,
+        experiment_id: activeExp?.id ?? null,
+        condition,
         status: complete ? 'COMPLETED' : 'PENDING',
       })
       .select('id')
@@ -175,15 +195,26 @@ export const LoggingView = memo(function LoggingView() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-[#7f8c8d]">Experiment Link</label>
+              <label className="text-[9px] uppercase tracking-[0.2em] text-[#7f8c8d]">
+                Experiment Link
+                {activeExp && (
+                  <span className="text-white/40 normal-case tracking-normal ml-1">— {activeExp.name}</span>
+                )}
+              </label>
               <select
                 value={form.experiment_link}
                 onChange={e => handleChange('experiment_link', e.target.value)}
-                className="w-full bg-[#0a0a0a]/50 border border-[#7f8c8d]/30 p-4 rounded-lg text-white outline-none focus:border-white transition-all font-mono text-sm appearance-none cursor-pointer h-[54px]"
+                disabled={!activeExp}
+                className="w-full bg-[#0a0a0a]/50 border border-[#7f8c8d]/30 p-4 rounded-lg text-white outline-none focus:border-white transition-all font-mono text-sm appearance-none cursor-pointer h-[54px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option>None (Control)</option>
-                <option>Alpha - Flow A</option>
-                <option>Beta - Flow B</option>
+                {activeExp ? (
+                  <>
+                    <option>None (Control)</option>
+                    {CONDITIONS.map(c => <option key={c}>{c}</option>)}
+                  </>
+                ) : (
+                  <option value="None (Control)">No Active Experiment</option>
+                )}
               </select>
             </div>
             <div className="space-y-2">
