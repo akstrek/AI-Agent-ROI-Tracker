@@ -42,7 +42,7 @@ Four purpose-built tools, one command center.
 
 | Tool | Icon | Purpose |
 |------|------|---------|
-| **Logging** | 📋 | Log tasks by agent node, priority, and mode |
+| **Logging** | 📋 | Log tasks by agent node, priority, and mode — with a live history panel to edit time, toggle completion, or delete entries |
 | **ROI** | 📊 | Scorecard metrics with period-over-period benchmarks |
 | **Experiment** | 🧪 | A/B framework for condition-based task routing |
 | **Team** | 👥 | Per-node performance with weekly trend charts |
@@ -71,14 +71,14 @@ Period granularity: **Daily · Weekly · Monthly** — switchable in one click.
 Deploy an experiment, assign tasks to conditions, and let the data decide.
 
 **How it works:**
-1. **Create** an experiment with a name, start date, and condition assignment (`Latency Factor C`, `Yield Threshold`, `Strict Mode`)
-2. **Link tasks** to a condition when logging — tasks accumulate under `Alpha - Flow A` or `Beta - Flow B`
-3. **Read results** live: task count, avg completion time, and completion rate per condition
-4. **Halt / Resume** the experiment protocol at any time
+1. **Create** an experiment with a name, start date, and condition assignment (`Latency Factor C`, `Yield Threshold`, `Strict Mode`) — deploying is blocked while another experiment is already Running, so only one is active at a time
+2. **Link tasks** to a condition when logging — the Logging form's condition selector activates automatically for the currently Running experiment and ties each task to it via a real `experiment_id` foreign key, not a free-text label
+3. **Read results** live: task count, avg completion time, and completion rate per condition, scoped to that experiment's `experiment_id` and `start_date`
+4. **Halt / Resume** the experiment protocol at any time — halting immediately removes it from the Logging form's options
 
 **What to measure:** Which agent routing strategy completes tasks faster? Which condition yields higher completion rates? Does strict mode reduce latency or introduce friction?
 
-The **Network Sync Rate** indicator shows the aggregate completion rate across all experiment-linked tasks as a single headline number.
+The **Network Sync Rate** indicator shows the aggregate completion rate across the active experiment's linked tasks as a single headline number.
 
 ---
 
@@ -105,6 +105,7 @@ Every agent node gets its own performance card.
 
 | Feature | Detail |
 |---------|--------|
+| **Route Protection** | Next.js middleware verifies the session server-side via `getUser()` before `/dashboard` or `/account` ever render; unauthenticated requests redirect to login with the original path preserved as `returnUrl` |
 | **Avatar Upload** | Uploads to private Supabase Storage, generates a 1-year signed URL stored in `profiles` |
 | **Email Update** | Updates `auth.users` and `profiles.email` with `password_changed_at` timestamp |
 | **Password Rotation** | Both fields have show/hide toggles; writes `password_changed_at` to profiles on success |
@@ -132,25 +133,30 @@ Every agent node gets its own performance card.
 ```
 ergon/
 ├── frontend/                     # Next.js 15 App Router
+│   ├── middleware.ts             # server-side auth gate for /dashboard · /account
 │   ├── app/
-│   │   ├── (auth)/               # login · signup · reset · update-password
+│   │   ├── auth/                 # login · signup · reset · update-password
 │   │   ├── dashboard/            # main dashboard route
 │   │   └── account/              # user profile route
 │   ├── components/
 │   │   ├── canvas/Starfield.tsx  # WebGL-style star field (cursor + touch tracking)
 │   │   ├── layout/               # Header · BackgroundE · MobileScrollCTA
 │   │   ├── dashboard/            # DashboardView · ToolGrid · ToolDashboard · HowToUse
-│   │   ├── views/                # LoggingView · RoiView · ExperimentView · TeamView
+│   │   ├── views/                # LoggingView · TaskHistory · RoiView · ExperimentView · TeamView
 │   │   ├── auth/                 # LoginPage · SignupPage · ResetPassword · UpdatePassword
 │   │   └── account/AccountPage.tsx
 │   └── lib/
-│       ├── supabase.ts           # Supabase client
+│       ├── supabase.ts           # browser Supabase client (falls back to a mock client when unconfigured)
+│       ├── supabase-server.ts    # server/middleware Supabase client (real JWT verification via getUser())
+│       ├── tasks.ts              # task history queries (fetch · update status/time · delete)
+│       ├── experiments.ts        # active-experiment + scoped-results queries
+│       ├── dates.ts              # local-timezone day bucketing helpers
 │       └── analytics.ts          # logEvent() → analytics_events table
 │
 └── Supabase (Backend)
     ├── auth.users                # Supabase Auth
     ├── profiles                  # email · avatar_url · password_changed_at · updated_at
-    ├── tasks                     # core data model
+    ├── tasks                     # core data model (experiment_id · condition FK added in migrations/0001)
     ├── experiments               # A/B experiment definitions
     └── analytics_events          # event stream (task_logged, roi_period_changed, …)
 ```
@@ -182,7 +188,9 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000)
 
 **Required Supabase tables:** `profiles` · `tasks` · `experiments` · `analytics_events`
-> See `supabase/schema.sql` for full DDL including RLS policies and triggers.
+> Apply `supabase/migrations/` in order (currently `0001_experiment_link.sql`, which adds the `experiment_id` FK and `condition` column tasks use to link to experiments) against your project's SQL editor.
+
+No `.env`? The app boots in **mock mode** — every Supabase call resolves to a "not configured" response instead of crashing, so the UI renders and you can review it without a live backend.
 
 ---
 
